@@ -1,0 +1,1 @@
+generate.only_alive_patients = true

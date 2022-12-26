@@ -1,0 +1,22 @@
+{
+    "name": "fhirdb",
+    "type": "redis",
+    "memory_size":  3221225472,
+    "port": 12000,
+    "proxy_policy": "all-master-shards",
+    "sharding": true,
+    "shards_count": 2,
+    "shards_placement": "sparse",
+    "shard_key_regex": [{"regex": ".*\\{(?<tag>.*)\\}.*"}, {"regex": "(?<tag>.*)"}],
+    "replication": true,
+    "module_list": [{
+        "module_name": "search",
+        "module_args": "",
+        "semantic_version": "2.6.3"
+    },
+    {
+        "module_name":"ReJSON",
+        "module_args": "",
+        "semantic_version": "2.4.2"
+    }]
+}
