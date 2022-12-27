@@ -1,6 +1,7 @@
 # FHIR Search Examples  
 
-# Blog
+## Blog
+https://joeywhelan.blogspot.com/2022/12/redis-search-with-fhir-data.html
 
 
 ## Contents
