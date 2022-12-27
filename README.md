@@ -81,7 +81,8 @@ python3 fhir-search.py
 
 ## Search Scenarios <a name="search_scenarios"></a>
 
-### FHIR Location Resource <a name="location_resource"></a>
+### [FHIR Location Resource](https://www.hl7.org/fhir/location.html) <a name="location_resource"></a>
+
 #### **Index** <a name="location_index"></a>
 #### CLI
 ```bash
@@ -97,7 +98,7 @@ ft.create location_idx on json prefix 1 Location: schema $.status as status TAG 
             NumericField('$.position.longitude', as_name='longitude'),
             NumericField('$.position.latitude', as_name='latitude')
         ]
-        self.connection.ft('location_idx').create_index(schema, definition=idx_def)
+        connection.ft('location_idx').create_index(schema, definition=idx_def)
 ```
 #### **Location Scenario 1** <a name="location_scenario1"></a>
 #### Business Problem
@@ -109,7 +110,7 @@ ft.search location_idx '(@status:{active} @state:{AK})' return 2 $.name $.addres
 #### Python
 ```python
         query = Query('(@status:{active} @state:{AK})').return_fields('$.name', '$.address.city').paging(0,3)
-        result = self.connection.ft('location_idx').search(query)
+        result = connection.ft('location_idx').search(query)
 ```
 #### Results
 ```bash
@@ -121,13 +122,7 @@ ft.search location_idx '(@status:{active} @state:{AK})' return 2 $.name $.addres
 Find the closest, active medical facility (in the database) to Woodland Park CO
 #### CLI
 ```bash
-        request = AggregateRequest('@status:{active}')\
-        .load('@name', '@city', '@state', '@longitude', '@latitude')\
-        .apply(meters='geodistance(@longitude, @latitude, -105.0569, 38.9939)')\
-        .apply(miles='ceil(@meters*0.000621371)')\
-        .sort_by(Asc('@miles'))\
-        .limit(0,1)
-        result = self.connection.ft('location_idx').aggregate(request)
+ft.aggregate location_idx '@status:{active}' LOAD 5 @name @city @state @longitude @latitude APPLY 'geodistance(@longitude, @latitude, -105.0569, 38.9939)' AS meters APPLY 'ceil(@meters*0.000621371)' as miles sortby 2 @miles ASC limit 0 1
 ```
 #### Python
 ```python
@@ -137,14 +132,14 @@ Find the closest, active medical facility (in the database) to Woodland Park CO
         .apply(miles='ceil(@meters*0.000621371)')\
         .sort_by(Asc('@miles'))\
         .limit(0,1)
-        result = self.connection.ft('location_idx').aggregate(request)
+        result = connection.ft('location_idx').aggregate(request)
 ```
 #### Results
 ```bash
 [[b'name', b'ARETI COMPREHENSIVE PRIMARY CARE', b'city', b'COLORADO SPRINGS', b'state', b'CO', b'longitude', b'-104.768591624', b'latitude', b'38.9006726282', b'meters', b'27009.43', b'miles', b'17']]
 ```  
 
-### FHIR PractitionerRole Resource <a name="practitionerRole_resource"></a>
+### [FHIR PractitionerRole Resource](https://www.hl7.org/fhir/practitionerrole.html) <a name="practitionerRole_resource"></a>
 #### **Index** <a name="practitionerRole_index"></a>
 #### CLI
 ```bash
@@ -157,7 +152,7 @@ ft.create practitionerRole_idx on json prefix 1 PractitionerRole: schema $.pract
             TextField('$.specialty[*].text', as_name='specialty', sortable=True),
             TextField('$.location[*].display', as_name='location')
         ]
-        self.connection.ft('practitionerRole_idx').create_index(schema, definition=idx_def)
+        connection.ft('practitionerRole_idx').create_index(schema, definition=idx_def)
 ```
 #### **PractitionerRole Scenario 1** <a name="practitionerRole_scenario1"></a>
 #### Business Problem
@@ -169,7 +164,7 @@ ft.search practitionerRole_idx '(@specialty:"General Practice" @location:hospita
 #### Python
 ```python
         query = Query('(@specialty:"General Practice" @location:hospital)').return_fields('$.practitioner.display').paging(0,3)
-        result = self.connection.ft('practitionerRole_idx').search(query)
+        result = connection.ft('practitionerRole_idx').search(query)
 ```
 #### Results
 ```bash
@@ -186,14 +181,14 @@ ft.aggregate practitionerRole_idx * groupby 1 @specialty reduce count 0 as count
 #### Python
 ```python
         request = AggregateRequest('*').group_by('@specialty', reducers.count().alias('count'))     
-        result = self.connection.ft('practitionerRole_idx').aggregate(request)
+        result = connection.ft('practitionerRole_idx').aggregate(request)
 ```
 #### Results
 ```bash
 [[b'specialty', b'General Practice', b'count', b'1489']]
 ```  
 
-### FHIR MedicationRequest Resource <a name="medicationRequest_resource"></a>
+### [FHIR MedicationRequest Resource](https://www.hl7.org/fhir/medicationrequest.html) <a name="medicationRequest_resource"></a>
 #### **Index** <a name="medicationRequest_index"></a>
 #### CLI
 ```bash
@@ -207,7 +202,7 @@ ft.create medicationRequest_idx on json prefix 1 MedicationRequest: schema $.sta
             TextField('$.requester.display', as_name='prescriber', sortable=True),
             TextField('$.reasonReference[*].display', as_name='reason')
         ]
-        self.connection.ft('medicationRequest_idx').create_index(schema, definition=idx_def)
+        connection.ft('medicationRequest_idx').create_index(schema, definition=idx_def)
 ```
 #### **MedicationRequest Scenario 1** <a name="medicationRequest_scenario1"></a>
 #### Business Problem
@@ -219,7 +214,7 @@ ft.search medicationRequest_idx '@status:{active} @reason:%bronchitis%' return 1
 #### Python
 ```python
         query = Query('(@status:{active} @reason:%bronchitis%)').return_fields('$.medicationCodeableConcept.text').paging(0,3)
-        result = self.connection.ft('medicationRequest_idx').search(query)
+        result = connection.ft('medicationRequest_idx').search(query)
 ```
 #### Results
 ```bash
@@ -239,14 +234,14 @@ ft.aggregate medicationRequest_idx '@drug:(Hydrocodone|Oxycodone|Oxymorphone|Mor
         .group_by('@prescriber', reducers.count().alias('opioids_prescribed'))\
         .sort_by(Desc('@opioids_prescribed'))\
         .limit(0,3)
-        result = self.connection.ft('medicationRequest_idx').aggregate(request)
+        result = connection.ft('medicationRequest_idx').aggregate(request)
 ```
 #### Results
 ```bash
 [[b'prescriber', b'Dr. Aja848 McKenzie376', b'opiods_prescribed', b'53'], [b'prescriber', b'Dr. Jaquelyn689 Bernier607', b'opiods_prescribed', b'52'], [b'prescriber', b'Dr. Aurora248 Kessler503', b'opiods_prescribed', b'49']]
 ```    
 
-### FHIR Immunization Resource <a name="immunization_resource"></a>
+### [FHIR Immunization Resource](https://www.hl7.org/fhir/immunization.html) <a name="immunization_resource"></a>
 #### **Index** <a name="immunization_index"></a>
 #### CLI
 ```bash
@@ -259,7 +254,7 @@ ft.create immunization_idx on json prefix 1 Immunization: schema $.vaccineCode.t
             TextField('$.location.display', as_name='location'),
             TextField('$.occurrenceDateTime', as_name='date')
         ]
-        self.connection.ft('immunization_idx').create_index(schema, definition=idx_def)
+        connection.ft('immunization_idx').create_index(schema, definition=idx_def)
 ```
 #### **Immunization Scenario 1** <a name="immunization_scenario1"></a>
 #### Business Problem
@@ -271,7 +266,7 @@ ft.search immunization_idx '@location:urgent @date:2015*' return 1 $.patient.ref
 #### Python
 ```python
         query = Query('@location:urgent @date:2015*').return_fields('$.patient.reference').paging(0,5)
-        result = self.connection.ft('immunization_idx').search(query)
+        result = connection.ft('immunization_idx').search(query)
 ```
 #### Results
 ```bash
@@ -290,14 +285,14 @@ ft.aggregate immunization_idx '@date:2020*' groupby 1 @vax reduce count 0 as num
         .group_by('@vax', reducers.count().alias('num_vax'))\
         .sort_by(Desc('@num_vax'))\
         .limit(0,5)
-        result = self.connection.ft('immunization_idx').aggregate(request)
+        result = connection.ft('immunization_idx').aggregate(request)
 ```
 #### Results
 ```bash
 [[b'vax', b'Influenza, seasonal, injectable, preservative free', b'num_vax', b'264'], [b'vax', b'DTaP', b'num_vax', b'27'], [b'vax', b'Hep B, adolescent or pediatric', b'num_vax', b'25'], [b'vax', b'Pneumococcal conjugate PCV 13', b'num_vax', b'25'], [b'vax', b'IPV', b'num_vax', b'24']]
 ```  
 
-### FHIR Condition Resource <a name="condition_resource"></a>
+### [FHIR Condition Resource](https://www.hl7.org/fhir/condition.html) <a name="condition_resource"></a>
 #### **Index** <a name="condition_index"></a>
 #### CLI
 ```bash
@@ -310,7 +305,7 @@ ft.create condition_idx on json prefix 1 Condition: schema $.clinicalStatus.codi
             TextField('$.code.text', as_name='problem'),
             TagField('$.recordedDate', as_name='date')
         ]
-        self.connection.ft('condition_idx').create_index(schema, definition=idx_def)
+        connection.ft('condition_idx').create_index(schema, definition=idx_def)
 ```
 #### **Condition Scenario 1** <a name="condition_scenario1"></a>
 #### Business Problem
@@ -322,7 +317,7 @@ ft.search condition_idx '@code:{active} @problem:(rhinitis|asthma)' return 1 $.s
 #### Python
 ```python
         query = Query('@code:{active} @problem:(rhinitis|asthma)').return_fields('$.subject.reference').paging(0, 3)
-        result = self.connection.ft('condition_idx').search(query)
+        result = connection.ft('condition_idx').search(query)
 ```
 #### Results
 ```bash
@@ -343,14 +338,14 @@ ft.aggregate condition_idx * load 1 @date apply 'substr(@date,0,4)' as year grou
         .group_by('@year', reducers.count().alias('num_conditions'))\
         .sort_by(Desc('@year'))\
         .limit(0,5)
-        result = self.connection.ft('condition_idx').aggregate(request)
+        result = connection.ft('condition_idx').aggregate(request)
 ```
 #### Results
 ```bash
 [[b'year', b'2022', b'num_conditions', b'557'], [b'year', b'2021', b'num_conditions', b'690'], [b'year', b'2020', b'num_conditions', b'719'], [b'year', b'2019', b'num_conditions', b'600'], [b'year', b'2018', b'num_conditions', b'571']]
 ```  
 
-### FHIR Claim Resource <a name="claim_resource"></a>
+### [FHIR Claim Resource](https://www.hl7.org/fhir/claim.html) <a name="claim_resource"></a>
 #### **Index** <a name="claim_index"></a>
 #### CLI
 ```bash
@@ -363,7 +358,7 @@ ft.create claims_idx on json prefix 1 Claim: schema $.status as status tag $.ins
             TextField('$.insurance[*].coverage.display', as_name='insurer', sortable=True),
             NumericField('$.total.value', as_name='value')
         ]
-        self.connection.ft('claims_idx').create_index(schema, definition=idx_def)
+        connection.ft('claims_idx').create_index(schema, definition=idx_def)
 ```
 #### **Claim Scenario 1** <a name="claim_scenario1"></a>
 #### Business Problem
@@ -375,7 +370,7 @@ ft.search claims_idx '@insurer:Aetna @value:[1000,+inf] @status:{active}' return
 #### Python
 ```python
         query = Query('@insurer:Aetna @value:[1000,+inf] @status:{active}').return_fields('$.item[0].productOrService.text').paging(0, 3)
-        result = self.connection.ft('claims_idx').search(query)
+        result = connection.ft('claims_idx').search(query)
 ```
 #### Results
 ```bash
@@ -395,7 +390,7 @@ ft.aggregate claims_idx '@status:{active}' groupby 1 @insurer reduce sum 1 @valu
         .filter('@total_value > 0')\
         .sort_by(Desc('@total_value'))\
         .limit(0,3)
-        result = self.connection.ft('claims_idx').aggregate(request)
+        result = connection.ft('claims_idx').aggregate(request)
 ```
 #### Results
 ```bash
