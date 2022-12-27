@@ -1,5 +1,4 @@
-
 redis/*.zip
 synthea/synthea-with-dependencies.jar
 synthea/output/
-venv/
+venv
