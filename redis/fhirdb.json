@@ -8,15 +8,15 @@
     "shards_count": 2,
     "shards_placement": "sparse",
     "shard_key_regex": [{"regex": ".*\\{(?<tag>.*)\\}.*"}, {"regex": "(?<tag>.*)"}],
-    "replication": true,
+    "replication": false,
     "module_list": [{
         "module_name": "search",
         "module_args": "",
-        "semantic_version": "2.6.3"
+        "semantic_version": "2.6.5"
     },
     {
         "module_name":"ReJSON",
         "module_args": "",
-        "semantic_version": "2.4.2"
+        "semantic_version": "2.4.3"
     }]
 }
