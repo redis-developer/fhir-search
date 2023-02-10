@@ -21,7 +21,6 @@
   "homepage": "https://github.com/Redislabs-Solution-Architects/fhir-search#readme",
   "dependencies": {
     "argparse": "^2.0.1",
-    "JSONStream": "^1.3.5",
     "redis": "^4.6.4"
   },
   "type": "module"
