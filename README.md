@@ -37,7 +37,7 @@ https://joeywhelan.blogspot.com/2022/12/redis-search-with-fhir-data.html
         3.  [Scenario 2](#claim_scenario2)
 
 ## Summary <a name="summary"></a>
-This is collection of shell scripts and a python app that will build synthetic FHIR data, a Redis Enterprise deployment in Docker, and load that data into Redis.  Subsequently there are multiple advanced Redis search query examples in CLI, JavaScript and Python formats.
+This is collection of shell scripts and JavaScript + Python apps that will build synthetic FHIR data, a Redis Enterprise deployment in Docker, and load that data into Redis.  Subsequently there are multiple advanced Redis search query examples in CLI, JavaScript and Python formats.
 
 
 ## Features <a name="features"></a>
