@@ -4,8 +4,8 @@
 ## Description:  Builds a 3-node Redis Enterpise cluster.  Loads the latest GA modules for search and json.  Builds
 ## a sharded db to house FHIR data.
 
-SEARCH_LATEST=redisearch.Linux-ubuntu18.04-x86_64.2.6.3.zip
-JSON_LATEST=rejson.Linux-ubuntu18.04-x86_64.2.4.2.zip
+SEARCH_LATEST=redisearch.Linux-ubuntu18.04-x86_64.2.6.5.zip
+JSON_LATEST=rejson.Linux-ubuntu18.04-x86_64.2.4.3.zip
 
 if [ ! -f $SEARCH_LATEST ]
 then

@@ -1,0 +1,28 @@
+{
+  "name": "fhir-search",
+  "version": "1.0.0",
+  "description": "## Blog https://joeywhelan.blogspot.com/2022/12/redis-search-with-fhir-data.html",
+  "main": "index.js",
+  "scripts": {
+    "start": "node fhir-search.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Redislabs-Solution-Architects/fhir-search.git"
+  },
+  "keywords": [
+    "redis"
+  ],
+  "author": "Joey Whelan",
+  "license": "See LICENSE",
+  "bugs": {
+    "url": "https://github.com/Redislabs-Solution-Architects/fhir-search/issues"
+  },
+  "homepage": "https://github.com/Redislabs-Solution-Architects/fhir-search#readme",
+  "dependencies": {
+    "argparse": "^2.0.1",
+    "JSONStream": "^1.3.5",
+    "redis": "^4.6.4"
+  },
+  "type": "module"
+}

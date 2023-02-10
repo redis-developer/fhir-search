@@ -37,7 +37,7 @@ https://joeywhelan.blogspot.com/2022/12/redis-search-with-fhir-data.html
         3.  [Scenario 2](#claim_scenario2)
 
 ## Summary <a name="summary"></a>
-This is collection of shell scripts and a python app that will build synthetic FHIR data, a Redis Enterprise deployment in Docker, and load that data into Redis.  Subsequently there are multiple advanced Redis search query examples in both CLI and python formats.
+This is collection of shell scripts and a python app that will build synthetic FHIR data, a Redis Enterprise deployment in Docker, and load that data into Redis.  Subsequently there are multiple advanced Redis search query examples in CLI, JavaScript and Python formats.
 
 
 ## Features <a name="features"></a>
@@ -47,9 +47,10 @@ This is collection of shell scripts and a python app that will build synthetic F
 - Implements multiple search and aggregation operations against Redis.  
 
 ## Prerequisites <a name="prerequisites"></a>
-- Docker
-- python
-- java
+- Docker Compose
+- Python
+- Java
+- Nodejs
 
 ## Installation <a name="installation"></a>
 1. Clone this repo.
@@ -71,10 +72,20 @@ cd redis
 pip install -r requirements.txt
 ```
 
+5.  Install JavaScript requirements
+```bash
+npm install
+```
+
 ## Usage <a name="usage"></a>
 ### Options
 - --url. Redis connection string.  Default = redis://localhost:12000
 ### Execution
+#### JavaScript
+```bash
+node fhir-search.js
+```
+#### Python
 ```bash
 python3 fhir-search.py
 ```
@@ -87,6 +98,35 @@ python3 fhir-search.py
 #### CLI
 ```bash
 ft.create location_idx on json prefix 1 Location: schema $.status as status TAG $.name as name TEXT $.address.city as city TAG $.address.state as state TAG $.position.longitude as longitude NUMERIC $.position.latitude as latitude NUMERIC
+```
+#### JavaScript
+```javascript
+        await this.client.ft.create('location_idx', {
+            '$.status': {
+                type: SchemaFieldTypes.TAG,
+                AS: 'status'  
+            },
+            '$.name': {
+                type: SchemaFieldTypes.TEXT,
+                AS: 'name'
+            },
+            '$.address.city': {
+                type: SchemaFieldTypes.TAG,
+                AS: 'city'
+            },
+            '$.address.state': {
+                type: SchemaFieldTypes.TAG,
+                AS: 'state'
+            },
+            '$.position.longitude': {
+                type: SchemaFieldTypes.NUMERIC,
+                AS: 'longitude'
+            },
+            '$.position.latitude': {
+                type: SchemaFieldTypes.NUMERIC,
+                AS: 'latitude'
+            }
+        }, { ON: 'JSON', PREFIX: 'Location:'});
 ```
 #### Python
 ```python
@@ -107,6 +147,14 @@ Find 3 medical facilities in Alaska
 ```bash
 ft.search location_idx '(@status:{active} @state:{AK})' return 2 $.name $.address.city limit 0 3
 ```
+#### JavaScript
+```javascript
+        result = await this.client.ft.search('location_idx', '(@status:{active} @state:{AK})', {
+            RETURN: ['$.name', '$.address.city'],
+            LIMIT: {from: 0, size: 3}
+        });
+```
+
 #### Python
 ```python
         query = Query('(@status:{active} @state:{AK})').return_fields('$.name', '$.address.city').paging(0,3)
@@ -123,6 +171,34 @@ Find the closest, active medical facility (in the database) to Woodland Park CO
 #### CLI
 ```bash
 ft.aggregate location_idx '@status:{active}' LOAD 5 @name @city @state @longitude @latitude APPLY 'geodistance(@longitude, @latitude, -105.0569, 38.9939)' AS meters APPLY 'ceil(@meters*0.000621371)' as miles sortby 2 @miles ASC limit 0 1
+```
+#### JavaScript
+```javascript
+        result = await this.client.ft.aggregate('location_idx','@status:{active}', {
+            LOAD: ['@name', '@city', '@state', '@longitude', '@latitude'],
+            STEPS: [
+                    {   type: AggregateSteps.APPLY,
+                        expression: 'geodistance(@longitude, @latitude, -105.0569, 38.9939)', 
+                        AS: 'meters' 
+                    },
+                    {   type: AggregateSteps.APPLY ,
+                        expression: 'ceil(@meters*0.000621371)', 
+                        AS: 'miles' 
+                    },
+                    {
+                        type: AggregateSteps.SORTBY,
+                        BY: {
+                            BY: '@miles', 
+                            DIRECTION: 'ASC' 
+                        }
+                    },
+                    {
+                        type: AggregateSteps.LIMIT,
+                        from: 0, 
+                        size: 1
+                    }
+            ]
+        });
 ```
 #### Python
 ```python
@@ -145,6 +221,24 @@ ft.aggregate location_idx '@status:{active}' LOAD 5 @name @city @state @longitud
 ```bash
 ft.create practitionerRole_idx on json prefix 1 PractitionerRole: schema $.practitioner.display as physician TEXT $.specialty[*].text as specialty TEXT SORTABLE $.location[*].display as location TEXT
 ```
+#### Javascript
+```javascript
+        await this.client.ft.create('practitionerRole_idx', {
+            '$.practitioner.display': {
+                type:  SchemaFieldTypes.TEXT,
+                AS: 'physician'
+            },
+            '$.specialty[*].text': {
+                type: SchemaFieldTypes.TEXT,
+                AS: 'specialty',
+                SORTABLE: true
+            },
+            '$.location[*].display': {
+                type: SchemaFieldTypes.TEXT,
+                AS: 'location'
+            }
+        }, {ON: 'JSON', PREFIX: 'PractitionerRole:'});
+```
 #### Python
 ```python
         idx_def = IndexDefinition(index_type=IndexType.JSON, prefix=['PractitionerRole:'])
@@ -160,6 +254,13 @@ Find 3 General Practice physicians that work from a hospital
 #### CLI
 ```bash
 ft.search practitionerRole_idx '(@specialty:"General Practice" @location:hospital)' return 1 $.practitioner.display limit 0 3
+```
+#### JavaScript
+```javascript
+        result = await this.client.ft.search('practitionerRole_idx', '(@specialty:"General Practice" @location:hospital)', {
+            RETURN: ['$.practitioner.display'],
+            LIMIT: {from: 0, size: 3}
+        });
 ```
 #### Python
 ```python
@@ -178,6 +279,22 @@ Find the count of physicians per medical specialty
 ```bash
 ft.aggregate practitionerRole_idx * groupby 1 @specialty reduce count 0 as count
 ```
+#### JavaScript
+```javascript
+        result = await this.client.ft.aggregate('practitionerRole_idx', '*', {
+            STEPS: [
+                {   type: AggregateSteps.GROUPBY,
+                    properties: ['@specialty'],
+                    REDUCE: [
+                        {   type: AggregateGroupByReducers.COUNT,
+                            property: '@speciality',
+                            AS: 'count'
+                        }
+                    ]   
+                }
+            ]
+        })
+```
 #### Python
 ```python
         request = AggregateRequest('*').group_by('@specialty', reducers.count().alias('count'))     
@@ -193,6 +310,28 @@ ft.aggregate practitionerRole_idx * groupby 1 @specialty reduce count 0 as count
 #### CLI
 ```bash
 ft.create medicationRequest_idx on json prefix 1 MedicationRequest: schema $.status as status TAG $.medicationCodeableConcept.text as drug TEXT $.requester.display as prescriber TEXT SORTABLE $.reasonReference[*].display as reason TEXT
+```
+#### JavaScript
+```javascript
+        await this.client.ft.create('medicationRequest_idx', {
+            '$.status': {
+                type: SchemaFieldTypes.TAG,
+                AS: 'status'
+            },
+            '$.medicationCodeableConcept.text': {
+                type: SchemaFieldTypes.TEXT,
+                AS: 'drug'
+            },
+            '$.requester.display': {
+                type: SchemaFieldTypes.TEXT,
+                AS: 'prescriber',
+                SORTABLE: true
+            },
+            '$.reasonReference[*].display': {
+                type: SchemaFieldTypes.TEXT,
+                AS: 'reason'
+            }
+        }, {ON: 'JSON', PREFIX: 'MedicationRequest:'});
 ```
 #### Python
 ```python
@@ -211,6 +350,13 @@ Find the names of 3 medications that have been currently prescribed for bronchit
 ```bash
 ft.search medicationRequest_idx '@status:{active} @reason:%bronchitis%' return 1 $.medicationCodeableConcept.text limit 0 3
 ```
+#### JavaScript
+```javascript
+        result = await this.client.ft.search('medicationRequest_idx', '(@status:{active} @reason:%bronchitis%)', {
+            RETURN: ['$.medicationCodeableConcept.text'],
+            LIMIT: {from: 0, size: 3}
+        });
+```
 #### Python
 ```python
         query = Query('(@status:{active} @reason:%bronchitis%)').return_fields('$.medicationCodeableConcept.text').paging(0,3)
@@ -226,6 +372,35 @@ Find the top 3 physicians by prescription count who are prescribing opioids
 #### CLI
 ```bash
 ft.aggregate medicationRequest_idx '@drug:(Hydrocodone|Oxycodone|Oxymorphone|Morphine|Codeine|Fentanyl|Hydromorphone|Tapentadol|Methadone)' groupby 1 @prescriber reduce count 0 as opioids_prescribed sortby 2 @opioids_prescribed DESC limit 0 3
+```
+#### Javascript
+```javascript
+        const opioids = 'Hydrocodone|Oxycodone|Oxymorphone|Morphine|Codeine|Fentanyl|Hydromorphone|Tapentadol|Methadone';
+        result = await this.client.ft.aggregate('medicationRequest_idx', `@drug:${opioids}`, {
+            STEPS: [
+                {   type: AggregateSteps.GROUPBY,
+                    properties: ['@prescriber'],
+                    REDUCE: [
+                        {   type: AggregateGroupByReducers.COUNT,
+                            property: '@prescriber',
+                            AS: 'opioids_prescribed'
+                        }
+                    ]   
+                },
+                {
+                    type: AggregateSteps.SORTBY,
+                    BY: { 
+                        BY: '@opioids_prescribed', 
+                        DIRECTION: 'DESC' 
+                    }
+                },
+                {
+                    type: AggregateSteps.LIMIT,
+                    from: 0, 
+                    size: 3
+                }
+            ]
+        });
 ```
 #### Python
 ```python
@@ -247,6 +422,24 @@ ft.aggregate medicationRequest_idx '@drug:(Hydrocodone|Oxycodone|Oxymorphone|Mor
 ```bash
 ft.create immunization_idx on json prefix 1 Immunization: schema $.vaccineCode.text as vax TEXT SORTABLE $.location.display as location TEXT $.occurrenceDateTime as date TEXT
 ```
+#### JavaScript
+```javascript
+        await this.client.ft.create('immunization_idx', {
+            '$.vaccineCode.text': {
+                type: SchemaFieldTypes.TEXT,
+                AS: 'vax',
+                SORTABLE: true
+            },
+            '$.location.display': {
+                type: SchemaFieldTypes.TEXT,
+                AS: 'location'
+            },
+            '$.occurrenceDateTime': {
+                type: SchemaFieldTypes.TEXT,
+                AS: 'date'
+            }
+        }, {ON: 'JSON', PREFIX: 'Immunization:'});
+```
 #### Python
 ```python
         idx_def = IndexDefinition(index_type=IndexType.JSON, prefix=['Immunization:'])
@@ -262,6 +455,13 @@ Find 5 patients that received an immunizations at an urgent care clinic in 2015
 #### CLI
 ```bash
 ft.search immunization_idx '@location:urgent @date:2015*' return 1 $.patient.reference limit 0 5
+```
+#### JavaScript
+```javascript
+        result = await this.client.ft.search('immunization_idx', '@location:urgent @date:2015*', {
+            RETURN: ['$.patient.reference'],
+            LIMIT: {from: 0, size: 5}
+        });
 ```
 #### Python
 ```python
@@ -279,8 +479,31 @@ Find the top 5 vaccines administered in 2020
 ```bash
 ft.aggregate immunization_idx '@date:2020*' groupby 1 @vax reduce count 0 as num_vax sortby 2 @num_vax DESC limit 0 5
 ```
+#### Javascript
+```javascript
+        result = await this.client.ft.aggregate('immunization_idx', '@date:2020*', {
+            STEPS: [{   
+                type: AggregateSteps.GROUPBY,
+                properties: ['@vax'],
+                REDUCE: [{   
+                    type: AggregateGroupByReducers.COUNT,
+                    property: '@vax',
+                    AS: 'num_vax'
+                }]},
+                {   type: AggregateSteps.SORTBY,
+                    BY: { 
+                    BY: '@num_vax', 
+                    DIRECTION: 'DESC' 
+                }},
+                {   type: AggregateSteps.LIMIT,
+                    from: 0, 
+                    size: 5
+                }
+            ]
+        });
+```
 #### Python
-```bash
+```python
         request = AggregateRequest('@date:2020*')\
         .group_by('@vax', reducers.count().alias('num_vax'))\
         .sort_by(Desc('@num_vax'))\
@@ -298,6 +521,23 @@ ft.aggregate immunization_idx '@date:2020*' groupby 1 @vax reduce count 0 as num
 ```bash
 ft.create condition_idx on json prefix 1 Condition: schema $.clinicalStatus.coding[*].code as code TAG $.code.text as problem TEXT $.recordedDate as date TAG
 ```
+#### JavaScript
+```javascript
+        await this.client.ft.create('condition_idx', {
+            '$.clinicalStatus.coding[*].code': {
+                type: SchemaFieldTypes.TAG,
+                AS: 'code'
+            },
+            '$.code.text': {
+                type: SchemaFieldTypes.TEXT,
+                AS: 'problem'
+            },
+            '$.recordedDate': {
+                type: SchemaFieldTypes.TAG,
+                AS: 'date'
+            }
+        }, {ON: 'JSON', PREFIX: 'Condition:'});
+```
 #### Python
 ```python
         idx_def = IndexDefinition(index_type=IndexType.JSON, prefix=['Condition:'])
@@ -314,6 +554,13 @@ Find 3 patients with active cases of rhinitis or asthma
 ```bash
 ft.search condition_idx '@code:{active} @problem:(rhinitis|asthma)' return 1 $.subject.reference limit 0 3
 ```
+#### JavaScript
+```javascript
+        result = await this.client.ft.search('condition_idx', '@code:{active} @problem:(rhinitis|asthma)', {
+            RETURN: ['$.subject.reference'],
+            LIMIT: {from: 0, size: 3}
+        });
+```
 #### Python
 ```python
         query = Query('@code:{active} @problem:(rhinitis|asthma)').return_fields('$.subject.reference').paging(0, 3)
@@ -329,6 +576,34 @@ Find the count of reported medical conditions categorized by year
 #### CLI
 ```bash
 ft.aggregate condition_idx * load 1 @date apply 'substr(@date,0,4)' as year groupby 1 @year reduce count 0 as num_conditions SORTBY 2 @year DESC limit 0 5
+```
+#### JavaScript
+```javascript
+        result = await this.client.ft.aggregate('condition_idx', '*', {
+            LOAD: ['@date'],
+            STEPS: [
+                {   type: AggregateSteps.APPLY,
+                    expression: 'substr(@date,0,4)', 
+                    AS: 'year' 
+                },   
+                {   type: AggregateSteps.GROUPBY,
+                    properties: ['@year'],
+                    REDUCE: [{   
+                        type: AggregateGroupByReducers.COUNT,
+                        property: '@year',
+                        AS: 'num_conditions'
+                }]},
+                {   type: AggregateSteps.SORTBY,
+                    BY: { 
+                    BY: '@year', 
+                    DIRECTION: 'DESC' 
+                }},
+                {   type: AggregateSteps.LIMIT,
+                    from: 0, 
+                    size: 5
+                }
+            ]
+        });
 ```
 #### Python
 ```python
@@ -351,6 +626,24 @@ ft.aggregate condition_idx * load 1 @date apply 'substr(@date,0,4)' as year grou
 ```bash
 ft.create claims_idx on json prefix 1 Claim: schema $.status as status tag $.insurance[*].coverage.display as insurer text SORTABLE $.total.value as value numeric
 ```
+#### JavaScript
+```javascript
+        await this.client.ft.create('claims_idx', {
+            '$.status': {
+                type: SchemaFieldTypes.TAG,
+                AS: 'status'
+            },
+            '$.insurance[*].coverage.display': {
+                type: SchemaFieldTypes.TEXT,
+                AS: 'insurer',
+                SORTABLE: true    
+            },
+            '$.total.value': {
+                type: SchemaFieldTypes.NUMERIC,
+                AS: 'value'
+            }
+        }, {ON: 'JSON', PREFIX: 'Claim:'});
+```
 #### Python
 ```python
         idx_def = IndexDefinition(index_type=IndexType.JSON, prefix=['Claim:'])
@@ -367,6 +660,13 @@ Find the service description of 3 active claims where Aetna is the insurer and t
 ```bash
 ft.search claims_idx '@insurer:Aetna @value:[1000,+inf] @status:{active}' return 1 $.item[0].productOrService.text limit 0 3
 ```
+#### JavaScript
+```javascript
+        result = await this.client.ft.search('claims_idx', '@insurer:Aetna @value:[1000,+inf] @status:{active}', {
+            RETURN: ['$.item[0].productOrService.text'],
+            LIMIT: {from: 0, size: 3}
+        });
+```
 #### Python
 ```python
         query = Query('@insurer:Aetna @value:[1000,+inf] @status:{active}').return_fields('$.item[0].productOrService.text').paging(0, 3)
@@ -382,6 +682,33 @@ Find the Top 3 insurers by claim value
 #### CLI
 ```bash
 ft.aggregate claims_idx '@status:{active}' groupby 1 @insurer reduce sum 1 @value as total_value filter '@total_value > 0' sortby 2 @total_value DESC limit 0 3
+```
+#### JavaScript
+```javascript
+        result = await this.client.ft.aggregate('claims_idx', '@status:{active}', {
+            STEPS: [
+                {   type: AggregateSteps.GROUPBY,
+                    properties: ['@insurer'],
+                    REDUCE: [{   
+                        type: AggregateGroupByReducers.SUM,
+                        property: '@value',
+                        AS: 'total_value'
+                }]},
+                {
+                    type: AggregateSteps.FILTER,
+                    expression: '@total_value > 0'
+                },
+                {   type: AggregateSteps.SORTBY,
+                    BY: { 
+                    BY: '@total_value', 
+                    DIRECTION: 'DESC' 
+                }},
+                {   type: AggregateSteps.LIMIT,
+                    from: 0, 
+                    size: 5
+                }
+            ]
+        });
 ```
 #### Python
 ```python
